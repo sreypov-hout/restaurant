@@ -1,7 +1,8 @@
 'use client';
-import { Minus, Plus, Trash2 } from 'lucide-react';
-import Link from 'next/link';
+import { Minus, Plus, Trash2, X } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useCart } from '@/context/cartContext';
+import { useState } from 'react';
 
 const CartItem = ({ item, onUpdateQuantity, onRemove }) => {
   return (
@@ -18,7 +19,7 @@ const CartItem = ({ item, onUpdateQuantity, onRemove }) => {
 
       <div className="flex-1">
         <h3 className="font-semibold text-gray-800 mb-1">{item.name}</h3>
-        <p className="text-sm text-gray-500">{item.description || 'Delicious Khmer dish'}</p>
+        <p className="text-sm text-gray-500">{item.description || 'Delicious dish'}</p>
       </div>
 
       <div className="flex-shrink-0">
@@ -61,45 +62,89 @@ const CartItem = ({ item, onUpdateQuantity, onRemove }) => {
 };
 
 export default function CartPage() {
+  const router = useRouter();
   const { 
     cartItems, 
     updateCartItemQuantity, 
     removeFromCart, 
     submitOrder,
-    cartCount 
+    cartCount
   } = useCart();
+  const [showPopup, setShowPopup] = useState(false);
 
-  const totalAmount = cartItems.reduce((total, item) => total + (item.price * item.quantity), 0);
+  // Sort items by creation time (oldest first)
+  const sortedCartItems = [...cartItems].sort((a, b) => {
+    const aTime = a.createdAt || 0;
+    const bTime = b.createdAt || 0;
+    return aTime - bTime;
+  });
 
-  const handleCheckout = () => {
-    submitOrder();
+  // Calculate total amount
+  const totalAmount = cartItems.reduce(
+    (total, item) => total + (item.price * item.quantity), 
+    0
+  );
+
+  const handleCheckout = (e) => {
+    e.preventDefault();
+    try {
+      submitOrder();
+      setShowPopup(true);
+    } catch (error) {
+      console.error('Error submitting order:', error);
+    }
+  };
+
+  const handleClosePopup = () => {
+    setShowPopup(false);
+    router.push('/chef');
   };
 
   return (
-    <div className="mt-[48px]">
+    <div className="mt-[48px] relative">
+      {/* Order Confirmation Popup */}
+      {showPopup && (
+        <div className="fixed inset-0 backdrop-blur-sm bg-opacity-70 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-2xl p-8 max-w-md w-full relative">
+            <button
+              onClick={handleClosePopup}
+              className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 transition-colors"
+            >
+              <X size={24} />
+            </button>
+            {/* <div className="text-center py-6">
+              <p className="text-xl text-gray-800">
+                Please click the physical button to allow the robot to go to the kitchen
+              </p>
+            </div> */}
+            <div className="text-center py-6">
+              <h2 className="text-2xl font-bold text-green-800 mb-4">Order Submitted!</h2>
+              <p className="text-xl text-gray-800">
+                Please click the physical button to allow the robot to go to the kitchen
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="max-w-7xl mx-auto px-4">
         <div className="mb-8">
           <h1 className="text-3xl text-center mt-3 font-bold text-gray-800">
             Your <span className="text-green-800">Cart</span>
           </h1>
-          {/* <p className="text-center text-gray-600">{cartCount} items in cart</p> */}
         </div>
 
+        {/* Cart Items List */}
         <div className="rounded-xl shadow-sm px-6 py-4 mb-8 bg-black/10 backdrop-blur-xl hover:bg-black/15">
-          {cartItems.length === 0 ? (
+          {sortedCartItems.length === 0 ? (
             <div className="text-center py-10">
               <p className="text-gray-500 text-lg">Your cart is empty</p>
-              {/* <Link href="/khmerFood">
-                <button className="mt-4 bg-green-800 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg">
-                  Browse Menu
-                </button>
-              </Link> */}
             </div>
           ) : (
             <div className="space-y-4">
-              {cartItems.map((item) => (
+              {sortedCartItems.map((item) => (
                 <CartItem
-                  key={item.id}
+                  key={`${item.id}-${item.createdAt || ''}`}
                   item={item}
                   onUpdateQuantity={updateCartItemQuantity}
                   onRemove={removeFromCart}
@@ -109,24 +154,23 @@ export default function CartPage() {
           )}
         </div>
 
-        {cartItems.length > 0 && (
+        {/* Checkout Section */}
+        {sortedCartItems.length > 0 && (
           <div className="rounded-xl shadow-sm mb-8 p-6 bg-black/10 backdrop-blur-xl hover:bg-black/15">
             <div className="flex justify-between items-center mb-4">
               <span className="text-lg font-semibold text-gray-800">
-                Total Items ({cartItems.reduce((sum, item) => sum + item.quantity, 0)})
+                Total Items ({cartCount})
               </span>
               <span className="text-2xl font-bold text-gray-800">
                 ${totalAmount.toFixed(2)}
               </span>
             </div>
-            <Link href="/chef">
-              <button 
-                onClick={handleCheckout}
-                className="w-full bg-green-800 hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
-              >
-                Finish Your Order
-              </button>
-            </Link>
+            <button 
+              onClick={handleCheckout}
+              className="w-full bg-green-800 hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+            >
+              Finish Your Order
+            </button>
           </div>
         )}
       </div>

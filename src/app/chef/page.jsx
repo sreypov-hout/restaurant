@@ -1,6 +1,7 @@
 'use client';
-import { useState } from 'react';
-import { Check, Truck } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { Check, X } from 'lucide-react';
 import { useCart } from '@/context/cartContext';
 
 const ChefOrderItem = ({ item, onMarkReady }) => {
@@ -29,7 +30,7 @@ const ChefOrderItem = ({ item, onMarkReady }) => {
 
       <div className="flex-1">
         <h3 className="font-semibold text-gray-800 mb-1">{item.name}</h3>
-        <p className="text-sm text-gray-500">{item.description || 'Khmer dish'}</p>
+        <p className="text-sm text-gray-500">{item.description || 'Delicious dish'}</p>
         <div className="mt-1 flex items-center gap-2">
           <span className="text-sm font-medium">Qty: {item.quantity}</span>
           <span className="text-sm font-bold">${(item.price * item.quantity).toFixed(2)}</span>
@@ -54,9 +55,58 @@ const ChefOrderItem = ({ item, onMarkReady }) => {
   );
 };
 
+const DeliveryConfirmationModal = ({ item, onClose }) => {
+  return (
+    <div className="fixed inset-0 backdrop-blur-sm bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl w-96 p-6 shadow-lg">
+        <div className="flex justify-between items-start mb-4">
+          <h2 className="text-xl font-bold text-gray-800">Delivery Confirmation</h2>
+          <button 
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-700"
+            aria-label="Close and confirm delivery"
+          >
+            <X size={24} />
+          </button>
+        </div>
+        
+        <div className="mb-4">
+          <div className="w-full h-48 rounded-lg overflow-hidden bg-gray-100 mb-4">
+            <img
+              src={item.image}
+              alt={item.name}
+              className="w-full h-full object-cover"
+            />
+          </div>
+          
+          <h3 className="font-semibold text-lg text-gray-800 mb-2">{item.name}</h3>
+          <p className="text-sm text-gray-500 mb-4">{item.description || 'Delicious dish'}</p>
+          
+          <div className="space-y-2">
+            <div className="flex justify-between">
+              <span className="text-gray-600">Price</span>
+              <span className="font-medium">${item.price.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Quantity</span>
+              <span className="font-medium">{item.quantity}</span>
+            </div>
+            <div className="border-t border-gray-200 pt-2 mt-2 flex justify-between">
+              <span className="text-gray-600">Subtotal</span>
+              <span className="font-bold">${(item.price * item.quantity).toFixed(2)}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function ChefPage() {
   const { orders, setOrders } = useCart();
-  const [deliveryInProgress, setDeliveryInProgress] = useState(false);
+  const [showDeliveryModal, setShowDeliveryModal] = useState(false);
+  const [selectedItem, setSelectedItem] = useState(null);
+  const router = useRouter();
 
   const markAsReady = (id) => {
     setOrders(prevOrders =>
@@ -66,23 +116,36 @@ export default function ChefPage() {
     );
   };
 
-  const startDelivery = () => {
-    const itemsToDeliver = orders.filter(item => item.status === "ready-for-delivery");
-    if (itemsToDeliver.length === 0) return;
+  const handleStartDelivery = () => {
+    const readyItems = orders.filter(item => item.status === "ready-for-delivery");
+    if (readyItems.length === 0) return;
     
-    setDeliveryInProgress(true);
-    
-    setTimeout(() => {
-      setOrders(prevOrders =>
-        prevOrders.map(item =>
-          item.status === "ready-for-delivery" 
-            ? { ...item, status: "delivered" } 
-            : item
-        )
-      );
-      setDeliveryInProgress(false);
-    }, 3000);
+    setSelectedItem(readyItems[0]);
+    setShowDeliveryModal(true);
   };
+
+  const handleCloseModal = () => {
+    // Mark as delivered when closing the modal
+    setOrders(prevOrders =>
+      prevOrders.map(item =>
+        item.status === "ready-for-delivery" 
+          ? { ...item, status: "delivered" } 
+          : item
+      )
+    );
+    setShowDeliveryModal(false);
+  };
+
+  // Check if all items are delivered and redirect
+  useEffect(() => {
+    const allDelivered = orders.length > 0 && orders.every(item => item.status === "delivered");
+    if (allDelivered) {
+      const timer = setTimeout(() => {
+        router.push('/'); // Redirect to home page
+      }, 1500); // Redirect after 1.5 seconds
+      return () => clearTimeout(timer);
+    }
+  }, [orders, router]);
 
   const activeItems = orders.filter(item => item.status !== "delivered");
   const readyItemsCount = orders.filter(item => item.status === "ready-for-delivery").length;
@@ -95,18 +158,14 @@ export default function ChefPage() {
           <h1 className="text-3xl text-center mt-3 font-bold text-gray-800">
             Order <span className="text-green-800">Details</span>
           </h1>
-          {deliveryInProgress && (
-            <div className="mt-4 p-3 bg-blue-100 text-blue-800 rounded-lg flex items-center justify-center gap-2">
-              <Truck className="animate-pulse" />
-              <span>Robot is delivering food to customer...</span>
-            </div>
-          )}
         </div>
 
         <div className="rounded-xl shadow-sm px-6 py-4 mb-8 bg-black/10 backdrop-blur-xl hover:bg-black/15">
           {activeItems.length === 0 ? (
             <div className="text-center py-10">
-              <p className="text-gray-500 text-lg">No active orders</p>
+              <p className="text-gray-500 text-lg">
+                {orders.length === 0 ? "No active orders" : "All orders completed! Redirecting..."}
+              </p>
             </div>
           ) : (
             <div className="space-y-4">
@@ -134,15 +193,14 @@ export default function ChefPage() {
             
             <div className="flex gap-4">
               <button
-                onClick={startDelivery}
-                disabled={readyItemsCount === 0 || deliveryInProgress}
-                className={`flex-1 flex items-center justify-center gap-2 ${
-                  readyItemsCount === 0 || deliveryInProgress
+                onClick={handleStartDelivery}
+                disabled={readyItemsCount === 0}
+                className={`flex-1 flex items-center justify-center ${
+                  readyItemsCount === 0
                     ? "bg-gray-300 cursor-not-allowed"
                     : "bg-green-800 hover:bg-green-700"
                 } text-white font-semibold py-3 px-6 rounded-lg transition-colors`}
               >
-                <Truck size={18} />
                 Send via Robot
               </button>
             </div>
@@ -165,7 +223,7 @@ export default function ChefPage() {
                       </div>
                       <div className="flex-1">
                         <h3 className="font-semibold text-gray-800">{item.name}</h3>
-                        <p className="text-sm text-gray-500">{item.description || 'Khmer dish'}</p>
+                        <p className="text-sm text-gray-500">{item.description || 'Delicious dish'}</p>
                       </div>
                       <div className="text-green-800 flex items-center gap-1">
                         <Check size={18} />
@@ -178,6 +236,13 @@ export default function ChefPage() {
           </div>
         )}
       </div>
+
+      {showDeliveryModal && selectedItem && (
+        <DeliveryConfirmationModal
+          item={selectedItem}
+          onClose={handleCloseModal}
+        />
+      )}
     </div>
   );
 }
