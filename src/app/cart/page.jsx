@@ -122,6 +122,7 @@ export default function CartPage() {
               <p className="text-xl text-gray-800">
                 Please click the physical button to allow the robot to go to the kitchen
               </p>
+              <img className='flex justify-center ps-[90px]' src="./images/logo/button.png" alt="button" />
             </div>
           </div>
         </div>

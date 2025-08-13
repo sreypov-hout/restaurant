@@ -19,7 +19,7 @@ export default function Testimonial() {
       >
         {/* Red overlay to match your design */}
         {/* <div className="absolute inset-0 bg-opacity-90"></div> */}
-        <img src="/images/logo/background.png" className="w-[98%] h-[10%]" alt="kroy" />
+        <img src="./images/logo/background.png" className="w-[98%] h-[10%]" alt="kroy" />
       </div>
 
       {/* Content */}

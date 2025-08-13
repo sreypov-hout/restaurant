@@ -1,3 +1,4 @@
+import Link from "next/link";
 
 const Banner = () => {
   
@@ -35,9 +36,11 @@ const Banner = () => {
             </div>
 
             <div className="flex items-center space-x-4">
-              <button className="border-2 border-black/30 hover:bg-gray-400 text-black/80 px-8 py-3 rounded-full font-semibold transition-colors">
-                Buy Now
-              </button>
+              <Link href="/khmerFood">
+                <button className="border-2 border-black/30 hover:bg-gray-400 text-black/80 px-8 py-3 rounded-full font-semibold transition-colors">
+                  Buy Now
+                </button>
+              </Link>
             </div>
           </div>
 
